@@ -48,10 +48,22 @@ export function AdminSidebar({
       description: "Fleet Management",
     },
     {
-      name: "Vendors ",
+      name: "Vendors",
       icon: Shield,
       path: "vendor-controller",
       description: "Vendor Management",
+    },
+    {
+      name: "Drivers",
+      icon: Users,
+      path: "drivers",
+      description: "Driver Profiles & Licenses",
+    },
+    {
+      name: "Fleet Equipment",
+      icon: Truck,
+      path: "fleet-equipment",
+      description: "Vehicles & Chassis Assets",
     },
 
     {

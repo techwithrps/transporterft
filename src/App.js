@@ -142,6 +142,26 @@ function App() {
             }
           />
           <Route
+            path="/admin/drivers"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <DashboardLayout>
+                  <DriverDetails />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/fleet-equipment"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <DashboardLayout>
+                  <EquipmentDetails />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/editrequests"
             element={
               <ProtectedRoute allowedRoles={["Admin"]}>

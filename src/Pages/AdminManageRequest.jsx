@@ -444,10 +444,6 @@ const AdminManageRequest = ({
   };
 
   const handleReportClick = (report) => {
-    if (report.customer_id === user.id) {
-      toast.info("You cannot edit your own requests");
-      return;
-    }
     setSelectedReport(report);
     setSelectedRequest({
       id: report.id,
@@ -563,10 +559,6 @@ const AdminManageRequest = ({
 
       let response;
       if (selectedRequest.id) {
-        if (selectedRequest.customer_id === user.id) {
-          toast.error("You cannot edit your own requests");
-          return;
-        }
         response = await api.put(
           `/transport-requests/update/${selectedRequest.id}`,
           formData
@@ -574,10 +566,6 @@ const AdminManageRequest = ({
       } else {
         if (!formData.customer_id) {
           toast.error("Please select a customer for the new trip");
-          return;
-        }
-        if (formData.customer_id === user.id) {
-          toast.error("You cannot create a trip for yourself");
           return;
         }
         response = await api.post("/transport-requests/create", formData);
