@@ -85,6 +85,16 @@ export default function ContainerTracking() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6 max-w-7xl">
+      {/* Scrolling Announcement / Marquee Banner */}
+      <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 overflow-hidden shadow-sm flex items-center gap-3">
+        <span className="bg-amber-500 text-gray-950 text-xs font-black px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1 flex-shrink-0 shadow-sm">
+          <AlertCircle className="w-3.5 h-3.5" /> Notice
+        </span>
+        <marquee behavior="scroll" direction="left" scrollamount="6" className="text-xs md:text-sm font-semibold text-amber-900">
+          ⚠️ This is demo data for showing how we can track the container &bull; Enter any container number above or click any sample container below to see how stages, assigned vehicle, driver details, and current location are tracked in real-time.
+        </marquee>
+      </div>
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 bottom-0 opacity-10 pointer-events-none flex items-center pr-10">
