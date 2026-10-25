@@ -7,7 +7,7 @@ const API_BASE_URL =
     ? process.env.REACT_APP_API_URL
     : typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:4000/api"
-    : "http://localhost:4000/api";
+    : "https://transporterbt.onrender.com/api";
 
 console.log("API_BASE_URL used by axios:", API_BASE_URL);
 
