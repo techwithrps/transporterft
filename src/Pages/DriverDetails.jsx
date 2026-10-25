@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { driverAPI, vendorAPI } from "../utils/Api";
+import DocumentUploader from "../Components/common/DocumentUploader";
 
 // Modal Checklist Component
 const ModalChecklist = ({ isOpen, onClose, onVerify }) => {
@@ -289,6 +290,9 @@ const DriverDetails = () => {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [dlDocFile, setDlDocFile] = useState(null);
+  const [addressDocFile, setAddressDocFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [pendingFormData, setPendingFormData] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // 'create' or 'update'
 
@@ -408,6 +412,9 @@ const DriverDetails = () => {
       emerg_phone: driver.EMERG_PHONE || "",
       phone_no: driver.PHONE_NO || "",
     });
+    setDlDocFile(null);
+    setAddressDocFile(null);
+    setImageFile(null);
     setIsEditing(false);
   };
 
@@ -444,11 +451,23 @@ const DriverDetails = () => {
     try {
       let response;
 
+      // Prepare FormData to support binary file uploads (DL, Address proof, Photo)
+      const dataToSend = new FormData();
+      Object.keys(pendingFormData).forEach((k) => {
+        if (pendingFormData[k] !== null && pendingFormData[k] !== undefined && pendingFormData[k] !== "") {
+          dataToSend.append(k, pendingFormData[k]);
+        }
+      });
+      if (dlDocFile) dataToSend.append("dl_doc", dlDocFile);
+      if (addressDocFile) dataToSend.append("address_doc", addressDocFile);
+      if (imageFile) dataToSend.append("image", imageFile);
+
       if (pendingAction === "update" && selectedDriver) {
         // Update existing driver
+        const driverId = selectedDriver.DRIVER_ID || selectedDriver.driver_id;
         response = await driverAPI.updateDriver(
-          selectedDriver.DRIVER_ID,
-          pendingFormData
+          driverId,
+          dataToSend
         );
         if (response.success) {
           toast.success(
@@ -456,12 +475,15 @@ const DriverDetails = () => {
           );
           fetchDrivers();
           setIsEditing(false);
+          setDlDocFile(null);
+          setAddressDocFile(null);
+          setImageFile(null);
         } else {
           toast.error(response.error || "Failed to update driver");
         }
       } else {
         // Create new driver
-        response = await driverAPI.createDriver(pendingFormData);
+        response = await driverAPI.createDriver(dataToSend);
         if (response.success) {
           toast.success(
             "Driver created successfully after inspection verification"
@@ -487,7 +509,10 @@ const DriverDetails = () => {
       );
     } finally {
       // Clear pending data
-      setPendingFormData(null);
+      setDlDocFile(null);
+    setAddressDocFile(null);
+    setImageFile(null);
+    setPendingFormData(null);
       setPendingAction(null);
     }
   };
@@ -974,33 +999,65 @@ const DriverDetails = () => {
                       />
                     </div>
 
+                  </div>
+                </div>
+
+                {/* Driver Document Uploads & Verification */}
+                <div className="pt-4">
+                  <h3 className="text-md font-semibold text-gray-900 border-b pb-2 mb-4 flex items-center justify-between">
+                    <span>Documents & Verification (Max 5MB each)</span>
+                    <span className="text-xs font-normal text-gray-500">Supported: PDF, JPG, PNG, WEBP</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        DL Document
-                      </label>
-                      <input
-                        type="text"
-                        name="dl_doc"
-                        value={formData.dl_doc}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Document path/URL"
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
+                      <DocumentUploader
+                        label="Driving License (DL Document)"
+                        description="PDF or Image (Max 5MB)"
+                        selectedFile={dlDocFile}
+                        onFileSelect={setDlDocFile}
+                        hasExistingDoc={selectedDriver && (
+                          selectedDriver.HAS_DL_DOC === "true" ||
+                          selectedDriver.has_dl_doc === "true" ||
+                          !!selectedDriver.DL_DOC
+                        )}
+                        existingDocUrl={selectedDriver ? driverAPI.getDriverDocumentUrl(selectedDriver.DRIVER_ID || selectedDriver.driver_id, "dl") : null}
+                        existingDocName={selectedDriver?.DL_DOC_NAME || selectedDriver?.dl_doc_name || selectedDriver?.DL_DOC || "Driving License"}
+                        disabled={!isEditing && !!selectedDriver}
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Address Document
-                      </label>
-                      <input
-                        type="text"
-                        name="address_doc"
-                        value={formData.address_doc}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        placeholder="Document path/URL"
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
+                      <DocumentUploader
+                        label="Address Proof (Aadhar / Voter ID)"
+                        description="PDF or Image (Max 5MB)"
+                        selectedFile={addressDocFile}
+                        onFileSelect={setAddressDocFile}
+                        hasExistingDoc={selectedDriver && (
+                          selectedDriver.HAS_ADDRESS_DOC === "true" ||
+                          selectedDriver.has_address_doc === "true" ||
+                          !!selectedDriver.ADDRESS_DOC
+                        )}
+                        existingDocUrl={selectedDriver ? driverAPI.getDriverDocumentUrl(selectedDriver.DRIVER_ID || selectedDriver.driver_id, "address") : null}
+                        existingDocName={selectedDriver?.ADDRESS_DOC_NAME || selectedDriver?.address_doc_name || selectedDriver?.ADDRESS_DOC || "Address Document"}
+                        disabled={!isEditing && !!selectedDriver}
+                      />
+                    </div>
+
+                    <div>
+                      <DocumentUploader
+                        label="Driver Photograph"
+                        description="JPG, PNG, WEBP (Max 5MB)"
+                        selectedFile={imageFile}
+                        onFileSelect={setImageFile}
+                        hasExistingDoc={selectedDriver && (
+                          selectedDriver.HAS_IMAGE === "true" ||
+                          selectedDriver.has_image === "true" ||
+                          !!selectedDriver.IMAGE
+                        )}
+                        existingDocUrl={selectedDriver ? driverAPI.getDriverDocumentUrl(selectedDriver.DRIVER_ID || selectedDriver.driver_id, "image") : null}
+                        existingDocName={selectedDriver?.IMAGE_NAME || selectedDriver?.image_name || selectedDriver?.IMAGE || "Driver Photo"}
+                        disabled={!isEditing && !!selectedDriver}
                       />
                     </div>
                   </div>

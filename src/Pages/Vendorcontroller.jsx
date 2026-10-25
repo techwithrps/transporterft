@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { vendorAPI } from "../utils/Api";
 import { toast, ToastContainer } from "react-toastify";
+import DocumentUploader from "../Components/common/DocumentUploader";
 import "react-toastify/dist/ReactToastify.css";
 
 const VendorController = () => {
@@ -203,23 +204,9 @@ const VendorController = () => {
   };
 
   // View document
-  const handleViewDocument = async (vendorId, docNumber) => {
-    try {
-      const response = await vendorAPI.getVendorDocument(vendorId, docNumber);
-      const url = window.URL.createObjectURL(new Blob([response]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `vendor_document_${vendorId}_${docNumber}.pdf`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast.error(error.message || "Failed to download document");
-    }
+  const handleViewDocument = (vendorId, docNumber) => {
+    const url = vendorAPI.getVendorDocumentUrl(vendorId, docNumber);
+    window.open(url, "_blank");
   };
 
   return (
@@ -570,24 +557,44 @@ const VendorController = () => {
                 </div>
               </div>
 
-              {/* Documents */}
-              <div className="mb-4">
-                <label className="block mb-1">
-                  PDF Documents (Max 3, 5MB each)
-                </label>
-                {[1, 2, 3].map((index) => (
-                  <div key={index} className="mb-2">
-                    <label className="block mb-1">
-                      Document {index} (PDF only)
-                    </label>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      onChange={(e) => handleDocumentChange(index - 1, e)}
-                      className="w-full"
-                    />
-                  </div>
-                ))}
+              {/* Documents Section with DocumentUploader */}
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-gray-800">
+                    Vendor Verification Documents (Max 3, up to 5MB each)
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Upload GST registration, PAN card, or agreement contracts in PDF or image format (JPG, PNG, WEBP).
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((num) => {
+                    const hasDoc = selectedVendor && (
+                      selectedVendor[`HAS_DOCUMENT${num}`] === "true" ||
+                      selectedVendor[`has_document${num}`] === "true" ||
+                      selectedVendor[`has_document${num}`] === true
+                    );
+                    const docName = selectedVendor ? (selectedVendor[`DOCUMENT${num}_NAME`] || selectedVendor[`document${num}_name`] || `Document ${num}`) : `Document ${num}`;
+                    const docUrl = hasDoc && selectedVendor ? vendorAPI.getVendorDocumentUrl(selectedVendor.VENDOR_ID || selectedVendor.vendor_id, num) : null;
+
+                    return (
+                      <DocumentUploader
+                        key={num}
+                        label={`Document ${num}`}
+                        description="PDF or Image (Max 5MB)"
+                        selectedFile={documents[num - 1]}
+                        onFileSelect={(file) => {
+                          const newDocs = [...documents];
+                          newDocs[num - 1] = file;
+                          setDocuments(newDocs);
+                        }}
+                        hasExistingDoc={hasDoc}
+                        existingDocUrl={docUrl}
+                        existingDocName={docName}
+                      />
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Status */}

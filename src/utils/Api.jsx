@@ -518,6 +518,15 @@ export const servicesAPI = {
 // Assuming you have a base API instance configured
 // import api from './baseApi'; // Your configured axios instance
 
+
+// Helper to construct authenticated URLs for streaming binary documents in browser tabs
+export const getDocumentUrl = (endpointPath) => {
+  const token = localStorage.getItem("token") || "";
+  const base = API_BASE_URL.replace(/\/+$/, "");
+  const cleanPath = endpointPath.startsWith("/") ? endpointPath : "/" + endpointPath;
+  return `${base}${cleanPath}?token=${encodeURIComponent(token)}`;
+};
+
 export const vendorAPI = {
   // Get all vendors
   getAllVendors: async () => {
@@ -583,6 +592,9 @@ export const vendorAPI = {
   },
 
   // Delete vendor
+  getVendorDocumentUrl: (vendorId, docNumber) => {
+    return getDocumentUrl(`/vendors/${vendorId}/document/${docNumber}`);
+  },
   deleteVendor: async (vendorId) => {
     try {
       const response = await api.delete(`/vendors/${vendorId}`);
@@ -689,6 +701,19 @@ export const driverAPI = {
   },
 
   // Delete driver
+  getDriverDocumentUrl: (driverId, docType) => {
+    return getDocumentUrl(`/drivers/${driverId}/document/${docType}`);
+  },
+  getDriverDocument: async (driverId, docType) => {
+    try {
+      const response = await api.get(`/drivers/${driverId}/document/${docType}`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
   deleteDriver: async (driverId) => {
     try {
       const response = await api.delete(`/drivers/${driverId}`);
@@ -809,6 +834,28 @@ export const vehicleAPI = {
       return response.data;
     } catch (error) {
       console.error("Error creating vehicle:", error);
+      throw error.response?.data || error;
+    }
+  },
+  getVehicleDocumentUrl: (id, docType) => {
+    return getDocumentUrl(`/vehicles/${id}/document/${docType}`);
+  },
+  getVehicleDocument: async (id, docType) => {
+    try {
+      const response = await api.get(`/vehicles/${id}/document/${docType}`, {
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+  updateVehicle: async (id, vehicleData) => {
+    try {
+      const response = await api.put(`/vehicles/${id}`, vehicleData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating vehicle:", error);
       throw error.response?.data || error;
     }
   },
