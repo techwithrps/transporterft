@@ -32,11 +32,11 @@ const LocationSearchInput = ({
     }
     try {
       const response = await fetch(
-        "https://running-backendelogisol.onrender.com/api/locations"
+        (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL + "/locations" : "https://transporterbt-2.onrender.com/api/locations")
       );
       const data = await response.json();
       const filteredLocations = data.filter((location) =>
-        location.LOCATION_NAME?.toLowerCase().includes(searchText.toLowerCase())
+        (location.LOCATION_NAME || location.location_name || "")?.toLowerCase().includes(searchText.toLowerCase())
       );
       setSuggestions(filteredLocations);
       setShowSuggestions(true);
@@ -88,7 +88,7 @@ const LocationSearchInput = ({
   const handleSuggestionClick = (suggestion) => {
     const locationString = useOpenStreetMap
       ? suggestion.display_name
-      : suggestion.LOCATION_NAME;
+      : (suggestion.LOCATION_NAME || suggestion.location_name);
 
     setInputValue(locationString);
     onChange(locationString);
@@ -103,7 +103,7 @@ const LocationSearchInput = ({
       </div>
     ) : (
       <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
-        <div className="font-medium">{suggestion.LOCATION_NAME}</div>
+        <div className="font-medium">{suggestion.LOCATION_NAME || suggestion.location_name}</div>
         <div className="text-gray-600 text-xs">
           ID: {suggestion.LOCATION_ID} | Terminal: {suggestion.TERMINAL_ID}
         </div>
