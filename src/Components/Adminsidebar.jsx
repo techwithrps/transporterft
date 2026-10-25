@@ -14,6 +14,9 @@ import {
   LogOut,
   Shield,
   Activity,
+  Package,
+  MapPin,
+  Navigation,
 } from "lucide-react";
 
 export function AdminSidebar({

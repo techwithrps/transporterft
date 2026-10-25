@@ -452,16 +452,33 @@ export { api };
 export default api;
 
 export const locationAPI = {
-  // Get all locations
   getAllLocations: async () => {
     try {
       const response = await api.get("/locations");
       return response.data;
-      console.log("Locations fetched successfully:", response.data);
     } catch (error) {
-      throw error.response?.data || error.message;
+      console.error("Error fetching locations:", error);
+      throw error.response?.data || error;
     }
   },
+  createLocation: async (locationData) => {
+    try {
+      const response = await api.post("/locations", locationData);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating location:", error);
+      throw error.response?.data || error;
+    }
+  },
+  deleteLocation: async (id) => {
+    try {
+      const response = await api.delete(`/locations/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      throw error.response?.data || error;
+    }
+  }
 };
 export const transporterListAPI = {
   getAllTransporters: async (page = 1) => {
@@ -765,6 +782,8 @@ export const equipmentAPI = {
   },
 };
 
+
+
 export const vehicleAPI = {
   getAllvehicles: async () => {
     try {
@@ -775,8 +794,34 @@ export const vehicleAPI = {
       throw error.response?.data || error.message;
     }
   },
+  getAllVehicles: async () => {
+    try {
+      const response = await api.get("/vehicles");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching vehicles:", error);
+      throw error.response?.data || error.message;
+    }
+  },
+  createVehicle: async (vehicleData) => {
+    try {
+      const response = await api.post("/vehicles", vehicleData);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating vehicle:", error);
+      throw error.response?.data || error;
+    }
+  },
+  deleteVehicle: async (id) => {
+    try {
+      const response = await api.delete(`/vehicles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      throw error.response?.data || error;
+    }
+  }
 };
-// Add these functions to your existing api.jsx file
 
 export const asnAPI = {
   // Get all ASN records
@@ -844,4 +889,25 @@ export const asnAPI = {
       throw error.response?.data || error.message;
     }
   },
+};
+
+export const containerTrackingAPI = {
+  trackContainer: async (containerNo) => {
+    try {
+      const response = await api.get(`/containers/track/${encodeURIComponent(containerNo)}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error tracking container:", error);
+      throw error.response?.data || error;
+    }
+  },
+  getAllContainers: async () => {
+    try {
+      const response = await api.get("/containers/all");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching containers:", error);
+      throw error.response?.data || error;
+    }
+  }
 };

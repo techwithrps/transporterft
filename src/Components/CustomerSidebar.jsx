@@ -37,6 +37,12 @@ export function CustomerSidebar({
       description: "Overview & Summary",
     },
     {
+      name: "Container Tracking",
+      icon: Package,
+      path: "container-tracking",
+      description: "Live Container Status",
+    },
+    {
       name: "My Shipments",
       icon: Truck,
       path: "my-shipments",

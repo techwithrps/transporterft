@@ -34,6 +34,9 @@ import ContainerAssignmentDashboard from "./Pages/Containeradminpage";
 import DailyAdvancePaymentsReport from "./Pages/DailyAdvancePaymentsReport";
 import ContainerMarginReport from "./Pages/ContainerMarginReport";
 import PaymentReceipts from "./Pages/PaymentReceipts";
+import ContainerTracking from "./Pages/ContainerTracking";
+import VehicleMaster from "./Pages/VehicleMaster";
+import LocationMaster from "./Pages/LocationMaster";
 
 const DashboardLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -157,6 +160,46 @@ function App() {
               <ProtectedRoute allowedRoles={["Admin"]}>
                 <DashboardLayout>
                   <EquipmentDetails />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/container-tracking"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <DashboardLayout>
+                  <ContainerTracking />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/container-tracking"
+            element={
+              <ProtectedRoute allowedRoles={["Customer", "Admin"]}>
+                <DashboardLayout>
+                  <ContainerTracking />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/vehicles"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <DashboardLayout>
+                  <VehicleMaster />
+                </DashboardLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/locations"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <DashboardLayout>
+                  <LocationMaster />
                 </DashboardLayout>
               </ProtectedRoute>
             }
