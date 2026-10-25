@@ -26,23 +26,41 @@ const LocationSearchInput = ({
   }, []);
 
   const searchSavedLocations = async (searchText) => {
-    if (!searchText || searchText.length < 2) {
+    if (!searchText || searchText.length < 1) {
       setSuggestions([]);
       return;
     }
     try {
-      const response = await fetch(
-        (process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL + "/locations" : "https://transporterbt-2.onrender.com/api/locations")
-      );
+      const apiUrl = process.env.REACT_APP_API_URL
+        ? (process.env.REACT_APP_API_URL.endsWith("/api")
+            ? process.env.REACT_APP_API_URL + "/locations"
+            : process.env.REACT_APP_API_URL + "/api/locations")
+        : "https://transporterbt-2.onrender.com/api/locations";
+
+      const response = await fetch(apiUrl);
       const data = await response.json();
-      const filteredLocations = data.filter((location) =>
-        (location.LOCATION_NAME || location.location_name || "")?.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setSuggestions(filteredLocations);
-      setShowSuggestions(true);
+      if (Array.isArray(data)) {
+        const filteredLocations = data.filter((location) =>
+          (location.LOCATION_NAME || location.location_name || "")
+            ?.toLowerCase()
+            .includes(searchText.toLowerCase())
+        );
+        setSuggestions(filteredLocations);
+        setShowSuggestions(true);
+      }
     } catch (error) {
       console.error("Saved locations search error:", error);
-      setSuggestions([]);
+      // Fallback search in major Indian cities
+      const fallbackCities = [
+        "JAIPUR", "DELHI", "NOIDA", "FARIDABAD", "KANPUR",
+        "GURUGRAM", "GHAZIABAD", "MUMBAI", "AHMEDABAD", "BENGALURU",
+        "CHENNAI", "HYDERABAD", "KOLKATA", "PUNE", "LUCKNOW"
+      ];
+      const filtered = fallbackCities
+        .filter((c) => c.toLowerCase().includes(searchText.toLowerCase()))
+        .map((c, i) => ({ location_id: i + 1, location_name: c }));
+      setSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
     }
   };
 
@@ -76,10 +94,10 @@ const LocationSearchInput = ({
     }
   };
 
-  // ✅ Handle pressing Enter or leaving input field
+  // Handle pressing Enter or leaving input field
   const handleInputConfirm = () => {
-    if (inputValue.trim()) {
-      onChange(inputValue.trim()); // Send free text upward
+    if (inputValue && inputValue.trim()) {
+      onChange(inputValue.trim());
       setSuggestions([]);
       setShowSuggestions(false);
     }
@@ -102,11 +120,13 @@ const LocationSearchInput = ({
         {suggestion.display_name}
       </div>
     ) : (
-      <div className="p-2 hover:bg-gray-100 cursor-pointer text-sm">
-        <div className="font-medium">{suggestion.LOCATION_NAME || suggestion.location_name}</div>
-        <div className="text-gray-600 text-xs">
-          ID: {suggestion.LOCATION_ID} | Terminal: {suggestion.TERMINAL_ID}
-        </div>
+      <div className="p-2 hover:bg-blue-50 cursor-pointer text-sm flex items-center justify-between">
+        <span className="font-medium text-gray-800">
+          {suggestion.LOCATION_NAME || suggestion.location_name}
+        </span>
+        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+          City
+        </span>
       </div>
     );
 
@@ -117,9 +137,9 @@ const LocationSearchInput = ({
         className="w-full h-10 border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         value={inputValue}
         onChange={handleInputChange}
-        onBlur={handleInputConfirm} // ✅ confirm on blur
+        onBlur={handleInputConfirm}
         onKeyDown={(e) => {
-          if (e.key === "Enter") handleInputConfirm(); // ✅ confirm on Enter
+          if (e.key === "Enter") handleInputConfirm();
         }}
         placeholder={placeholder}
         required
@@ -127,12 +147,12 @@ const LocationSearchInput = ({
 
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute z-10 w-full bg-white border rounded-md mt-1 shadow-lg max-h-60 overflow-auto">
-          {suggestions.map((suggestion) => (
+          {suggestions.map((suggestion, idx) => (
             <div
               key={
                 useOpenStreetMap
                   ? suggestion.place_id
-                  : suggestion.LOCATION_REF_ID
+                  : (suggestion.LOCATION_ID || suggestion.location_id || idx)
               }
               onClick={() => handleSuggestionClick(suggestion)}
               className="cursor-pointer"

@@ -31,19 +31,33 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
 
-  // Fixed useEffect in your Login component
+  // Load Indian cities for locations
   useEffect(() => {
     const loadLocations = async () => {
       try {
         console.log("Starting to load locations...");
         const data = await locationAPI.getAllLocations();
         console.log("Locations loaded successfully:", data);
-        setLocations(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setLocations(data);
+        } else {
+          setLocations([
+            { location_id: 1, location_name: "JAIPUR" },
+            { location_id: 2, location_name: "DELHI" },
+            { location_id: 3, location_name: "NOIDA" },
+            { location_id: 4, location_name: "FARIDABAD" },
+            { location_id: 5, location_name: "KANPUR" },
+          ]);
+        }
       } catch (err) {
         console.error("Failed to load locations:", err);
-        // Show user-friendly error
-        toast.error("Failed to load locations. Please refresh the page.");
-        setError("Failed to load locations");
+        setLocations([
+          { location_id: 1, location_name: "JAIPUR" },
+          { location_id: 2, location_name: "DELHI" },
+          { location_id: 3, location_name: "NOIDA" },
+          { location_id: 4, location_name: "FARIDABAD" },
+          { location_id: 5, location_name: "KANPUR" },
+        ]);
       }
     };
     loadLocations();
@@ -79,22 +93,28 @@ export default function Login() {
             position: "top-right",
           });
 
+          const userRole = (user?.role || "").trim().toLowerCase();
+          const normalizedUser = {
+            ...user,
+            role: userRole ? (userRole.charAt(0).toUpperCase() + userRole.slice(1).toLowerCase()) : "Customer"
+          };
+          localStorage.setItem("user", JSON.stringify(normalizedUser));
+
           setTimeout(() => {
-            const userRole = user?.role;
-            if (userRole === "Admin") {
+            if (userRole === "admin") {
               window.location.href = "/admin-dashboard";
-            } else if (userRole === "Customer") {
+            } else if (userRole === "customer") {
               window.location.href = "/customer-dashboard";
-            } else if (userRole === "Driver") {
+            } else if (userRole === "driver") {
               window.location.href = "/driver-dashboard";
-            } else if (userRole === "Accounts") {
+            } else if (userRole === "accounts") {
               window.location.href = "/accounts-dashboard";
-            } else if (userRole === "Reports & MIS") {
+            } else if (userRole === "reports & mis") {
               window.location.href = "/reports-dashboard";
             } else {
-              window.location.href = "/dashboard";
+              window.location.href = "/customer-dashboard";
             }
-          }, 1000);
+          }, 400);
         } else {
           throw new Error("Invalid response from server. Please try again.");
         }
@@ -394,11 +414,15 @@ export default function Login() {
                         <option value="" disabled>
                           Select Location
                         </option>
-                        {locations.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.LOCATION_NAME}
-                          </option>
-                        ))}
+                        {locations.map((loc, idx) => {
+                          const id = loc.LOCATION_ID || loc.location_id || loc.id || idx;
+                          const name = loc.LOCATION_NAME || loc.location_name;
+                          return (
+                            <option key={id} value={name}>
+                              {name}
+                            </option>
+                          );
+                        })}
                       </select>
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events.none">
                         <ChevronDown className="h-5 w-5 text-gray-400" />

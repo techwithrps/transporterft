@@ -123,33 +123,38 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login(credentials);
 
       // Store user data and token
-      localStorage.setItem("user", JSON.stringify(response.user));
+      const normalizedUser = {
+        ...response.user,
+        role: response.user?.role ? (response.user.role.charAt(0).toUpperCase() + response.user.role.slice(1).toLowerCase()) : "Customer"
+      };
+      localStorage.setItem("user", JSON.stringify(normalizedUser));
       localStorage.setItem("token", response.token);
       setAuthToken(response.token);
-      setUser(response.user);
+      setUser(normalizedUser);
 
-      toast.success(`Welcome back, ${response.user.name}!`);
+      toast.success(`Welcome back, ${normalizedUser.name || normalizedUser.email}!`);
 
       // Redirect based on user role
       if (navigate) {
-        switch (response.user.role) {
-          case "Admin":
+        const userRole = (normalizedUser.role || "").trim().toLowerCase();
+        switch (userRole) {
+          case "admin":
             navigate("/admin-dashboard");
             break;
-          case "Customer":
+          case "customer":
             navigate("/customer-dashboard");
             break;
-          case "Driver":
+          case "driver":
             navigate("/driver-dashboard");
             break;
-          case "Accounts":
+          case "accounts":
             navigate("/accounts-dashboard");
             break;
-          case "Reports & MIS":
+          case "reports & mis":
             navigate("/reports-dashboard");
             break;
           default:
-            navigate("/");
+            navigate("/customer-dashboard");
         }
       }
 

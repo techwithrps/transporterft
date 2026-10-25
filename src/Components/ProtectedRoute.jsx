@@ -22,31 +22,36 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
           console.log("Token expired in ProtectedRoute, but continuing");
         }
 
+        const userRoleLower = (user?.role || "").trim().toLowerCase();
+        const hasAccess =
+          allowedRoles.length === 0 ||
+          allowedRoles.some((r) => r.toLowerCase() === userRoleLower);
+
         // If user has required role, allow access
-        if (allowedRoles.length === 0 || allowedRoles.includes(user.role)) {
+        if (hasAccess) {
           setIsValidating(false);
           return;
         }
 
         // User doesn't have required role, redirect to their dashboard
-        switch (user.role) {
-          case "Admin":
+        switch (userRoleLower) {
+          case "admin":
             navigate("/admin-dashboard", { replace: true });
             break;
-          case "Customer":
+          case "customer":
             navigate("/customer-dashboard", { replace: true });
             break;
-          case "Driver":
+          case "driver":
             navigate("/driver-dashboard", { replace: true });
             break;
-          case "Accounts":
+          case "accounts":
             navigate("/accounts-dashboard", { replace: true });
             break;
-          case "Reports & MIS":
+          case "reports & mis":
             navigate("/reports-dashboard", { replace: true });
             break;
           default:
-            navigate("/", { replace: true });
+            navigate("/login", { replace: true });
         }
       } else {
         // No user, will be handled by the redirect below
@@ -79,21 +84,26 @@ export const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
+  const userRoleLower = (user?.role || "").trim().toLowerCase();
+  const hasAccess =
+    allowedRoles.length === 0 ||
+    allowedRoles.some((r) => r.toLowerCase() === userRoleLower);
+
   // If specific roles are required and user doesn't have them, redirect
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    switch (user.role) {
-      case "Admin":
+  if (!hasAccess) {
+    switch (userRoleLower) {
+      case "admin":
         return <Navigate to="/admin-dashboard" replace />;
-      case "Customer":
+      case "customer":
         return <Navigate to="/customer-dashboard" replace />;
-      case "Driver":
+      case "driver":
         return <Navigate to="/driver-dashboard" replace />;
-      case "Accounts":
+      case "accounts":
         return <Navigate to="/accounts-dashboard" replace />;
-      case "Reports & MIS":
+      case "reports & mis":
         return <Navigate to="/reports-dashboard" replace />;
       default:
-        return <Navigate to="/" replace />;
+        return <Navigate to="/login" replace />;
     }
   }
 

@@ -78,17 +78,22 @@ const DashboardLayout = ({ children }) => {
 const RoleRedirect = () => {
   const { user } = useAuth();
 
-  if (!user) return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" replace />;
 
-  switch (user.role) {
-    case "Admin":
-      return <Navigate to="/admin-dashboard" />;
-    case "Customer":
-      return <Navigate to="/customer-dashboard" />;
-    case "Driver":
-      return <Navigate to="/driver-dashboard" />;
+  const role = (user.role || "").trim().toLowerCase();
+  switch (role) {
+    case "admin":
+      return <Navigate to="/admin-dashboard" replace />;
+    case "customer":
+      return <Navigate to="/customer-dashboard" replace />;
+    case "driver":
+      return <Navigate to="/driver-dashboard" replace />;
+    case "accounts":
+      return <Navigate to="/accounts-dashboard" replace />;
+    case "reports & mis":
+      return <Navigate to="/reports-dashboard" replace />;
     default:
-      return <Navigate to="/login" />;
+      return <Navigate to="/login" replace />;
   }
 };
 
@@ -110,6 +115,14 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           {/* Admin routes - AdminLayout handles its own sidebar */}
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin-dashboard/*"
             element={
