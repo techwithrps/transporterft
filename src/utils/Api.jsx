@@ -1,13 +1,19 @@
 import axios from "axios";
 
 // Use environment variable with fallback to live Render backend for production
-const API_BASE_URL =
+let baseUrl =
   process.env.REACT_APP_API_URL &&
   !process.env.REACT_APP_API_URL.includes("your-production")
-    ? process.env.REACT_APP_API_URL
+    ? process.env.REACT_APP_API_URL.trim()
     : typeof window !== "undefined" && window.location.hostname === "localhost"
     ? "http://localhost:4000/api"
     : "https://transporterbt-2.onrender.com/api";
+
+if (baseUrl && !baseUrl.endsWith("/api") && !baseUrl.endsWith("/api/")) {
+  baseUrl = baseUrl.replace(/\/+$/, "") + "/api";
+}
+
+const API_BASE_URL = baseUrl;
 
 console.log("API_BASE_URL used by axios:", API_BASE_URL);
 
