@@ -163,34 +163,35 @@ const VendorController = () => {
   const handleEdit = async (vendor) => {
     try {
       setLoading(true);
-      const response = await vendorAPI.getVendorById(vendor.VENDOR_ID);
+      const vendorId = vendor.VENDOR_ID || vendor.vendor_id;
+      const response = await vendorAPI.getVendorById(vendorId);
       const vendorData = response.data;
       setSelectedVendor(vendorData);
       setFormData({
-        vendor_name: vendorData.VENDOR_NAME || "",
-        terminal_id: vendorData.TERMINAL_ID || "",
-        vendor_code: vendorData.VENDOR_CODE || "",
-        address: vendorData.ADDRESS || "",
-        city: vendorData.CITY || "",
-        pin_code: vendorData.PIN_CODE || "",
-        state_code: vendorData.STATE_CODE || "",
-        country: vendorData.COUNTRY || "India",
-        email_id1: vendorData.EMAIL_ID1 || "",
-        email_id2: vendorData.EMAIL_ID2 || "",
-        contact_no: vendorData.CONTACT_NO || "",
-        mobile_no: vendorData.MOBILE_NO || "",
-        fax: vendorData.FAX || "",
-        payment_terms: vendorData.PAYMENT_TERMS || "",
-        pan: vendorData.PAN || "",
-        tan: vendorData.TAN || "",
-        service_tax_reg: vendorData.SERVICE_TAX_REG || "",
-        bank_name: vendorData.BANK_NAME || "",
-        ac_map_code: vendorData.AC_MAP_CODE || "",
-        account_no: vendorData.ACCOUNT_NO || "",
-        ifsc: vendorData.IFSC || "",
-        bank_branch: vendorData.BANK_BRANCH || "",
-        gstin: vendorData.GSTIN || "",
-        status: vendorData.STATUS || "Active",
+        vendor_name: vendorData.VENDOR_NAME || vendorData.vendor_name || "",
+        terminal_id: vendorData.TERMINAL_ID || vendorData.terminal_id || "",
+        vendor_code: vendorData.VENDOR_CODE || vendorData.vendor_code || "",
+        address: vendorData.ADDRESS || vendorData.address || "",
+        city: vendorData.CITY || vendorData.city || "",
+        pin_code: vendorData.PIN_CODE || vendorData.pin_code || "",
+        state_code: vendorData.STATE_CODE || vendorData.state_code || "",
+        country: vendorData.COUNTRY || vendorData.country || "India",
+        email_id1: vendorData.EMAIL_ID1 || vendorData.email_id1 || "",
+        email_id2: vendorData.EMAIL_ID2 || vendorData.email_id2 || "",
+        contact_no: vendorData.CONTACT_NO || vendorData.contact_no || "",
+        mobile_no: vendorData.MOBILE_NO || vendorData.mobile_no || "",
+        fax: vendorData.FAX || vendorData.fax || "",
+        payment_terms: vendorData.PAYMENT_TERMS || vendorData.payment_terms || "",
+        pan: vendorData.PAN || vendorData.pan || "",
+        tan: vendorData.TAN || vendorData.tan || "",
+        service_tax_reg: vendorData.SERVICE_TAX_REG || vendorData.service_tax_reg || "",
+        bank_name: vendorData.BANK_NAME || vendorData.bank_name || "",
+        ac_map_code: vendorData.AC_MAP_CODE || vendorData.ac_map_code || "",
+        account_no: vendorData.ACCOUNT_NO || vendorData.account_no || "",
+        ifsc: vendorData.IFSC || vendorData.ifsc || "",
+        bank_branch: vendorData.BANK_BRANCH || vendorData.bank_branch || "",
+        gstin: vendorData.GSTIN || vendorData.gstin || "",
+        status: vendorData.STATUS || vendorData.status || "Active",
       });
       setDocuments([null, null, null]);
       setIsModalOpen(true);
@@ -259,45 +260,60 @@ const VendorController = () => {
                 </td>
               </tr>
             ) : (
-              vendors.map((vendor) => (
-                <tr key={vendor.VENDOR_ID}>
-                  <td className="px-4 py-2 border">{vendor.VENDOR_ID}</td>
-                  <td className="px-4 py-2 border">{vendor.VENDOR_NAME}</td>
-                  <td className="px-4 py-2 border">{vendor.VENDOR_CODE}</td>
-                  <td className="px-4 py-2 border">{vendor.EMAIL_ID1}</td>
-                  <td className="px-4 py-2 border">
-                    {["1", "2", "3"].map(
-                      (doc) =>
-                        vendor[`HAS_DOCUMENT${doc}`] === "true" && (
-                          <button
-                            key={doc}
-                            onClick={() =>
-                              handleViewDocument(vendor.VENDOR_ID, doc)
-                            }
-                            className="text-blue-500 hover:underline mr-2"
-                          >
-                            Doc {doc}
-                          </button>
-                        )
-                    )}
-                  </td>
-                  <td className="px-4 py-2 border">{vendor.STATUS}</td>
-                  <td className="px-4 py-2 border">
-                    <button
-                      onClick={() => handleEdit(vendor)}
-                      className="text-blue-500 hover:underline mr-2"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(vendor.VENDOR_ID)}
-                      className="text-red-500 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+              vendors.map((vendor) => {
+                const vendorId = vendor.VENDOR_ID || vendor.vendor_id;
+                const vendorName = vendor.VENDOR_NAME || vendor.vendor_name || "-";
+                const vendorCode = vendor.VENDOR_CODE || vendor.vendor_code || "-";
+                const email = vendor.EMAIL_ID1 || vendor.email_id1 || "-";
+                const status = vendor.STATUS || vendor.status || "Active";
+
+                return (
+                  <tr key={vendorId} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 border text-gray-600">{vendorId}</td>
+                    <td className="px-4 py-2 border font-medium text-gray-800">{vendorName}</td>
+                    <td className="px-4 py-2 border text-gray-600">{vendorCode}</td>
+                    <td className="px-4 py-2 border text-gray-600">{email}</td>
+                    <td className="px-4 py-2 border">
+                      {["1", "2", "3"].map((doc) => {
+                        const hasDoc =
+                          vendor[`HAS_DOCUMENT${doc}`] === "true" ||
+                          vendor[`has_document${doc}`] === "true" ||
+                          vendor[`has_document${doc}`] === true;
+                        return (
+                          hasDoc && (
+                            <button
+                              key={doc}
+                              onClick={() => handleViewDocument(vendorId, doc)}
+                              className="text-blue-500 hover:underline mr-2 font-medium"
+                            >
+                              Doc {doc}
+                            </button>
+                          )
+                        );
+                      })}
+                    </td>
+                    <td className="px-4 py-2 border">
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
+                        {status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 border">
+                      <button
+                        onClick={() => handleEdit(vendor)}
+                        className="text-blue-600 hover:underline mr-3 font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(vendorId)}
+                        className="text-red-600 hover:underline font-medium"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
