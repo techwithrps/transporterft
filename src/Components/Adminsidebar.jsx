@@ -68,6 +68,24 @@ export function AdminSidebar({
       path: "fleet-equipment",
       description: "Vehicles & Chassis Assets",
     },
+    {
+      name: "Container Tracking",
+      icon: Navigation,
+      path: "container-tracking",
+      description: "Live Tracking & Shipping Line",
+    },
+    {
+      name: "Vehicle Master",
+      icon: Truck,
+      path: "vehicles",
+      description: "Fleet Asset & RC/Insurance",
+    },
+    {
+      name: "Location Master",
+      icon: MapPin,
+      path: "locations",
+      description: "Terminals & Port Hubs",
+    },
 
     {
       name: "Edit Requests",

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
@@ -12,6 +13,7 @@ import {
   FileText,
   Eye,
   RefreshCw,
+  Navigation,
   MapPin,
   ChevronLeft,
   ChevronRight,
@@ -784,6 +786,13 @@ const AdminDashboard = () => {
               </p>
             </div>
             <div className="flex space-x-3">
+              <Link
+                to="/admin/container-tracking"
+                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all font-semibold shadow-xs"
+              >
+                <Navigation className="w-4 h-4 mr-2" />
+                Track Container
+              </Link>
               <button
                 onClick={refreshData}
                 className="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

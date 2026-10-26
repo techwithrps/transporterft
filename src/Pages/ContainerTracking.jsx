@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Package,
@@ -13,10 +13,19 @@ import {
   ShieldCheck,
   RefreshCw,
   Navigation,
-  FileText
+  FileText,
+  ExternalLink,
+  Globe,
+  CheckCircle2,
+  HelpCircle,
+  Anchor,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { containerTrackingAPI } from "../utils/Api";
+import {
+  identifyShippingLine,
+  validateISO6346,
+} from "../utils/ShippingLineIdentifier";
 
 export default function ContainerTracking() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -24,6 +33,15 @@ export default function ContainerTracking() {
   const [containerData, setContainerData] = useState(null);
   const [allContainers, setAllContainers] = useState([]);
   const [tableLoading, setTableLoading] = useState(false);
+
+  // Live Shipping Line Identification from the search query
+  const liveCarrierInfo = useMemo(() => {
+    const q = (searchQuery || containerData?.container_no || "").trim();
+    if (q.length >= 3) {
+      return identifyShippingLine(q);
+    }
+    return null;
+  }, [searchQuery, containerData]);
 
   // Load sample / recent containers on mount
   useEffect(() => {
@@ -102,13 +120,13 @@ export default function ContainerTracking() {
         </div>
         <div className="relative z-10 max-w-3xl">
           <div className="inline-flex items-center gap-2 bg-blue-500/30 px-3 py-1 rounded-full text-xs font-semibold text-blue-200 mb-3 border border-blue-400/20">
-            <Navigation className="w-3.5 h-3.5" /> Live Container Tracking Portal
+            <Navigation className="w-3.5 h-3.5" /> Live Container Tracking & Shipping Line Inspector
           </div>
           <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
             Container Tracking
           </h1>
           <p className="text-blue-100 mt-2 text-sm md:text-base">
-            Track real-time status, vehicle assignment, transport routes, and stage-by-stage lifecycle of any container in your fleet.
+            Track real-time location, stages, assigned truck/driver, and instantly identify the <strong>Shipping Line / Ocean Carrier</strong> for free.
           </p>
 
           {/* Search Input Box */}
@@ -120,7 +138,7 @@ export default function ContainerTracking() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === "Enter" && handleTrack()}
-                placeholder="Enter Container Number (e.g. CONT99887766, TGHU7718290)"
+                placeholder="Enter Container Number (e.g. MSCU8492019, CMAU3381920, TGHU7718290)"
                 className="w-full pl-11 pr-4 py-3 rounded-xl bg-white text-gray-900 text-sm md:text-base focus:outline-none focus:ring-4 focus:ring-blue-400 font-mono font-medium shadow-inner"
               />
             </div>
@@ -144,7 +162,7 @@ export default function ContainerTracking() {
           {/* Quick Select Chips */}
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-blue-200">
             <span className="font-semibold text-white">Quick Test:</span>
-            {["CONT99887766", "TGHU7718290", "CMAU3381920", "MSCU8492019"].map((num) => (
+            {["CMAU3381920", "MSCU8492019", "TGHU7718290", "MAEU1234567", "CONT99887766"].map((num) => (
               <button
                 key={num}
                 onClick={() => {
@@ -159,6 +177,68 @@ export default function ContainerTracking() {
           </div>
         </div>
       </div>
+
+      {/* Free Shipping Line & BIC Identification Inspector Card */}
+      {liveCarrierInfo && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-5 md:p-6 shadow-lg border border-slate-700/60 relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xl">{liveCarrierInfo.flag}</span>
+                <span className="font-black text-lg text-white">
+                  {liveCarrierInfo.carrierName}
+                </span>
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/30 text-blue-300 border border-blue-400/30 uppercase tracking-wider">
+                  {liveCarrierInfo.type}
+                </span>
+                <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                  BIC: {liveCarrierInfo.ownerCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 flex items-center gap-2">
+                <span>📍 HQ: <strong>{liveCarrierInfo.hq}</strong></span>
+                <span>&bull;</span>
+                <span>Category: <strong>{liveCarrierInfo.category}</strong></span>
+              </p>
+              {liveCarrierInfo.validation?.isStandardFormat && (
+                <div className="text-xs mt-1">
+                  {liveCarrierInfo.validation.valid ? (
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> ISO 6346 Check Digit Verified (Digit: {liveCarrierInfo.validation.actualCheckDigit})
+                    </span>
+                  ) : (
+                    <span className="text-amber-400 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> {liveCarrierInfo.validation.message}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Direct Official Carrier Tracking Link */}
+            <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
+              <a
+                href={liveCarrierInfo.trackingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition"
+              >
+                <Anchor className="w-4 h-4" /> Official {liveCarrierInfo.shortName} Tracking
+                <ExternalLink className="w-3.5 h-3.5 ml-0.5" />
+              </a>
+              <a
+                href={liveCarrierInfo.freeBicRegistryUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-600 transition"
+                title="Verify on Bureau International des Containers (BIC) Free Directory"
+              >
+                <Globe className="w-3.5 h-3.5" /> BIC Registry
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tracking Result View */}
       {containerData ? (
@@ -175,66 +255,54 @@ export default function ContainerTracking() {
                 </span>
               </div>
               <p className="text-gray-500 text-sm mt-1">
-                Type: <span className="font-semibold text-gray-800">{containerData.container_size} {containerData.container_type}</span> | Shipping Line: <span className="font-semibold text-gray-800">{containerData.line}</span> | Seal: <span className="font-semibold font-mono text-gray-800">{containerData.seal_no}</span>
+                Type: <span className="font-semibold text-gray-800">{containerData.container_size} {containerData.container_type}</span> | Shipping Line: <span className="font-semibold text-gray-800">{liveCarrierInfo?.carrierName || containerData.line || "Intermodal"}</span> | Seal: <span className="font-semibold font-mono text-gray-800">{containerData.seal_no || "SEAL-OK"}</span>
               </p>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-right">
-              <div className="text-xs text-blue-600 font-semibold uppercase">Current Status / Location</div>
-              <div className="text-sm font-bold text-blue-900 mt-0.5 flex items-center justify-end gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
-                {containerData.current_location}
-              </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">Current Location:</span>
+              <span className="px-3 py-1.5 bg-blue-50 text-blue-700 font-bold text-xs rounded-lg border border-blue-200 flex items-center gap-1">
+                <Navigation className="w-3.5 h-3.5" /> {containerData.current_location || "In Transit"}
+              </span>
             </div>
           </div>
 
-          {/* Stepper / Process Timeline */}
+          {/* Interactive Progress Stages */}
           <div>
-            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-600" /> Container Lifecycle & Movement Process
+            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">
+              Journey Progression
             </h3>
-            <div className="relative">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                {containerData.stages && containerData.stages.map((stage, idx) => {
-                  const isDone = stage.completed;
-                  const isCurrent = stage.current;
-                  return (
-                    <div
-                      key={stage.id}
-                      className={`relative rounded-xl p-4 border transition-all ${
-                        isCurrent
-                          ? "bg-blue-50 border-blue-400 ring-2 ring-blue-300"
-                          : isDone
-                          ? "bg-emerald-50/50 border-emerald-200"
-                          : "bg-gray-50 border-gray-200 opacity-60"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                          isDone ? "bg-emerald-600 text-white" : isCurrent ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-700"
-                        }`}>
-                          {isDone ? "✓" : idx + 1}
-                        </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                          Step {idx + 1}
-                        </span>
-                      </div>
-                      <div className="font-bold text-sm text-gray-900">{stage.title}</div>
-                      <div className="text-xs text-gray-600 mt-1 leading-snug">{stage.description}</div>
-                      {stage.location && (
-                        <div className="text-[11px] text-blue-700 font-medium mt-2 flex items-center gap-1">
-                          📍 {stage.location}
-                        </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {containerData.stages &&
+                containerData.stages.map((stage, idx) => (
+                  <div
+                    key={idx}
+                    className={`rounded-xl p-4 border transition-all ${
+                      stage.completed
+                        ? "bg-emerald-50/70 border-emerald-300 text-emerald-950"
+                        : "bg-gray-50 border-gray-200 text-gray-400 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold font-mono">0{idx + 1}</span>
+                      {stage.completed ? (
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      ) : (
+                        <Clock className="w-4 h-4 text-gray-400" />
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="font-bold text-xs md:text-sm">{stage.name}</div>
+                    <div className="text-[11px] text-gray-500 mt-1">
+                      {stage.time || "Scheduled"}
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
 
-          {/* Detailed Info Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-            {/* Card 1: Assigned Vehicle & Driver */}
+          {/* Three Info Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            {/* Card 1: Transport Asset & Driver */}
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-3">
               <div className="flex items-center gap-2 text-blue-700 font-bold text-sm pb-2 border-b border-gray-200">
                 <Truck className="w-4 h-4" /> Assigned Vehicle & Driver
@@ -242,25 +310,20 @@ export default function ContainerTracking() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Vehicle Number:</span>
-                  <span className="font-mono font-bold text-gray-900 bg-white px-2 py-0.5 rounded border">
-                    {containerData.vehicle_number || "Pending Assignment"}
-                  </span>
+                  <span className="font-mono font-bold text-gray-900">{containerData.vehicle_number || "Pending"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Driver Name:</span>
-                  <span className="font-semibold text-gray-900">{containerData.driver_name || "N/A"}</span>
+                  <span className="font-semibold text-gray-800">{containerData.driver_name || "Unassigned"}</span>
                 </div>
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <span className="text-gray-500">Driver Contact:</span>
                   {containerData.driver_contact ? (
-                    <a
-                      href={`tel:${containerData.driver_contact}`}
-                      className="text-blue-600 font-semibold hover:underline flex items-center gap-1"
-                    >
+                    <a href={`tel:${containerData.driver_contact}`} className="font-mono text-blue-600 hover:underline flex items-center gap-1">
                       <Phone className="w-3.5 h-3.5" /> {containerData.driver_contact}
                     </a>
                   ) : (
-                    <span className="text-gray-400">N/A</span>
+                    <span className="text-gray-400">-</span>
                   )}
                 </div>
                 <div className="flex justify-between">
@@ -270,7 +333,7 @@ export default function ContainerTracking() {
               </div>
             </div>
 
-            {/* Card 2: Transport Route & Dates */}
+            {/* Card 2: Transport Route & Schedule */}
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-200 space-y-3">
               <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm pb-2 border-b border-gray-200">
                 <Navigation className="w-4 h-4" /> Route & Schedule
@@ -334,7 +397,7 @@ export default function ContainerTracking() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900">All Registered Containers</h3>
-            <p className="text-xs text-gray-500">Click any container below to view instant status and journey tracking</p>
+            <p className="text-xs text-gray-500">Click any container below to view instant status, driver details, and shipping line info</p>
           </div>
           <button
             onClick={loadRecentContainers}
@@ -349,6 +412,7 @@ export default function ContainerTracking() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Container No</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Shipping Line / Carrier</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Size / Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Vehicle</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Driver</th>
@@ -360,55 +424,70 @@ export default function ContainerTracking() {
             <tbody className="divide-y divide-gray-200">
               {tableLoading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-6 text-gray-500">
+                  <td colSpan="8" className="text-center py-6 text-gray-500">
                     Loading containers...
                   </td>
                 </tr>
               ) : allContainers.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-6 text-gray-400">
+                  <td colSpan="8" className="text-center py-6 text-gray-400">
                     No containers found
                   </td>
                 </tr>
               ) : (
-                allContainers.map((c) => (
-                  <tr key={c.id || c.container_no} className="hover:bg-blue-50/40 transition">
-                    <td className="px-4 py-3 font-mono font-bold text-blue-700">
-                      {c.container_no}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {c.container_size || "40ft"} {c.container_type || ""}
-                    </td>
-                    <td className="px-4 py-3 font-mono font-medium text-gray-800">
-                      {c.vehicle_number || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-700">
-                      {c.driver_name || "-"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
-                      {c.pickup_location && c.delivery_location
-                        ? `${c.pickup_location} → ${c.delivery_location}`
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadge(c.request_status)}`}>
-                        {c.request_status || "Assigned"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        onClick={() => {
-                          setSearchQuery(c.container_no);
-                          handleTrack(c.container_no);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
-                      >
-                        Track
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                allContainers.map((c) => {
+                  const lineInfo = identifyShippingLine(c.container_no);
+                  return (
+                    <tr key={c.id || c.container_no} className="hover:bg-blue-50/40 transition">
+                      <td className="px-4 py-3 font-mono font-bold text-blue-700">
+                        {c.container_no}
+                      </td>
+                      <td className="px-4 py-3">
+                        {lineInfo ? (
+                          <div className="flex items-center gap-1.5">
+                            <span>{lineInfo.flag}</span>
+                            <span className="font-semibold text-gray-900 text-xs">
+                              {lineInfo.shortName}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Intermodal</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {c.container_size || "40ft"} {c.container_type || ""}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-medium text-gray-800">
+                        {c.vehicle_number || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {c.driver_name || "-"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {c.pickup_location && c.delivery_location
+                          ? `${c.pickup_location} → ${c.delivery_location}`
+                          : "-"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusBadge(c.request_status)}`}>
+                          {c.request_status || "Assigned"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => {
+                            setSearchQuery(c.container_no);
+                            handleTrack(c.container_no);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                        >
+                          Track
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
