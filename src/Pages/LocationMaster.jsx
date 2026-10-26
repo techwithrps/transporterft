@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, MapPin, Plus, Trash2, RefreshCw, X } from "lucide-react";
+import { Search, MapPin, Plus, Trash2, Edit2, RefreshCw, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { locationAPI } from "../utils/Api";
 
@@ -10,6 +10,11 @@ export default function LocationMaster() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newCityName, setNewCityName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCity, setEditingCity] = useState(null);
+  const [editCityName, setEditCityName] = useState("");
 
   useEffect(() => {
     fetchLocations();
@@ -23,7 +28,7 @@ export default function LocationMaster() {
         setLocations(data);
       }
     } catch (err) {
-      toast.error(err.message || "Failed to fetch locations");
+      toast.error(err.message || "Failed to load locations");
     } finally {
       setLoading(false);
     }
@@ -32,7 +37,7 @@ export default function LocationMaster() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newCityName.trim()) {
-      toast.warn("Please enter a city name");
+      toast.warning("Please enter a city name");
       return;
     }
     setSubmitting(true);
@@ -49,12 +54,42 @@ export default function LocationMaster() {
     }
   };
 
+  const openEditModal = (loc) => {
+    const id = loc.LOCATION_ID || loc.location_id;
+    const name = loc.LOCATION_NAME || loc.location_name;
+    setEditingCity({ id, name });
+    setEditCityName(name);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editCityName.trim() || !editingCity) {
+      toast.warning("Please enter a city name");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await locationAPI.updateLocation(editingCity.id, {
+        location_name: editCityName.trim().toUpperCase(),
+      });
+      toast.success(`City updated to "${editCityName.trim().toUpperCase()}"!`);
+      setIsEditModalOpen(false);
+      setEditingCity(null);
+      fetchLocations();
+    } catch (err) {
+      toast.error(err.message || "Failed to update location");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to remove "${name}" from locations?`)) return;
     try {
       await locationAPI.deleteLocation(id);
       toast.success(`City "${name}" removed`);
-      setLocations(prev => prev.filter(l => (l.LOCATION_ID || l.location_id) !== id));
+      setLocations((prev) => prev.filter((l) => (l.LOCATION_ID || l.location_id) !== id));
     } catch (err) {
       toast.error(err.message || "Failed to delete location");
     }
@@ -83,7 +118,7 @@ export default function LocationMaster() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm text-sm self-start sm:self-auto"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-sm text-sm self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Add New City
         </button>
@@ -102,10 +137,13 @@ export default function LocationMaster() {
           />
         </div>
         <div className="flex items-center gap-4 text-xs font-semibold text-gray-600 w-full sm:w-auto justify-between sm:justify-end">
-          <span>Total Cities: <strong className="text-gray-900 font-bold">{locations.length}</strong></span>
+          <span>
+            Total Cities:{" "}
+            <strong className="text-gray-900 font-bold">{locations.length}</strong>
+          </span>
           <button
             onClick={fetchLocations}
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-700 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
@@ -118,10 +156,18 @@ export default function LocationMaster() {
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">City ID</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">City / Location Name</th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Action</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                  City ID
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                  City / Location Name
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-600 uppercase">
+                  Type
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-600 uppercase">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -142,7 +188,7 @@ export default function LocationMaster() {
                   const id = loc.LOCATION_ID || loc.location_id;
                   const name = loc.LOCATION_NAME || loc.location_name;
                   return (
-                    <tr key={id || idx} className="hover:bg-gray-50">
+                    <tr key={id || idx} className="hover:bg-gray-50 transition">
                       <td className="px-5 py-3 text-gray-500 font-mono text-xs">{id}</td>
                       <td className="px-5 py-3 font-semibold text-gray-900 flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -154,12 +200,21 @@ export default function LocationMaster() {
                         </span>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => handleDelete(id, name)}
-                          className="text-red-600 hover:text-red-700 text-xs font-semibold hover:underline"
-                        >
-                          Remove
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => openEditModal(loc)}
+                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold inline-flex items-center gap-1 hover:underline cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" /> Edit
+                          </button>
+                          <span className="text-gray-300">|</span>
+                          <button
+                            onClick={() => handleDelete(id, name)}
+                            className="text-red-600 hover:text-red-800 text-xs font-semibold inline-flex items-center gap-1 hover:underline cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -178,7 +233,7 @@ export default function LocationMaster() {
               <h3 className="font-bold text-lg text-gray-900">Add New City</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -201,16 +256,64 @@ export default function LocationMaster() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? "Saving..." : "Save City"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit City Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <h3 className="font-bold text-lg text-gray-900">Edit City Name</h3>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  City / Location Name
+                </label>
+                <input
+                  type="text"
+                  value={editCityName}
+                  onChange={(e) => setEditCityName(e.target.value.toUpperCase())}
+                  placeholder="e.g. MUMBAI, JAIPUR"
+                  className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? "Updating..." : "Update City"}
                 </button>
               </div>
             </form>

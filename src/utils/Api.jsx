@@ -470,6 +470,15 @@ export const locationAPI = {
       throw error.response?.data || error;
     }
   },
+  updateLocation: async (id, locationData) => {
+    try {
+      const response = await api.put(`/locations/${id}`, locationData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating location:", error);
+      throw error.response?.data || error;
+    }
+  },
   deleteLocation: async (id) => {
     try {
       const response = await api.delete(`/locations/${id}`);
