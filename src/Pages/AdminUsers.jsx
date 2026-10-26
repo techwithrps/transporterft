@@ -1,9 +1,21 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { userAPI } from "../utils/Api"; // Import the specific API methods
+import { userAPI } from "../utils/Api";
 import { useAuth } from "../contexts/AuthContext";
-import { Users, Search, RefreshCw, UserPlus } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import {
+  Users,
+  Search,
+  RefreshCw,
+  UserPlus,
+  Trash2,
+  Edit2,
+  X,
+  Shield,
+  Key,
+  Mail,
+  Phone,
+  User as UserIcon,
+} from "lucide-react";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -11,293 +23,478 @@ export default function AdminUsers() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
-  const location = useLocation();
 
-  const isFromSidebar = location.state?.fromSidebar;
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "Customer",
+    password: "",
+  });
 
-  // Load users function following TransporterDetails pattern
+  const { user: currentUser } = useAuth();
+
+  // Load all users
   const loadUsers = async () => {
     setLoading(true);
     setError(null);
-
     try {
-      // Use the API method instead of direct axios call
       const response = await userAPI.getAllUsers();
-
-      if (response.success) {
+      if (response && response.success) {
         setUsers(response.data || response.users || []);
-        toast.info("Users loaded successfully");
+      } else if (Array.isArray(response)) {
+        setUsers(response);
       }
-    } catch (error) {
-      // Handle different error scenarios like TransporterDetails
-      if (error.status === 404 || error.message?.includes("not found")) {
-        setUsers([]);
-        console.log("No users found");
-      } else if (error.status === 401) {
-        setError("Authentication required. Please login again.");
-        toast.error("Authentication required. Please login again.");
-      } else if (error.status === 403) {
-        setError("Access denied. Admin privileges required.");
-        toast.error("Access denied. Admin privileges required.");
-      } else {
-        console.error("Error loading users:", error);
-        setError(error.message || "Failed to load users");
-        toast.error(error.message || "Failed to load users");
-      }
+    } catch (err) {
+      console.error("Error loading users:", err);
+      const msg = err.message || "Failed to load users";
+      setError(msg);
+      toast.error(msg);
       setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // UseEffect pattern following TransporterDetails
   useEffect(() => {
-    if (isFromSidebar && user?.role === "Admin") {
-      loadUsers();
-    }
-  }, [isFromSidebar, user]);
+    loadUsers();
+  }, []);
 
-  // Delete user function
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) {
+  // Open modal for Add User
+  const handleOpenAddModal = () => {
+    setModalMode("add");
+    setSelectedUserId(null);
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      role: "Customer",
+      password: "",
+    });
+    setIsModalOpen(true);
+  };
+
+  // Open modal for Edit User
+  const handleOpenEditModal = (targetUser) => {
+    setModalMode("edit");
+    setSelectedUserId(targetUser.id);
+    const normalizedRole =
+      (targetUser.role || "Customer").charAt(0).toUpperCase() +
+      (targetUser.role || "Customer").slice(1).toLowerCase();
+
+    setFormData({
+      name: targetUser.name || "",
+      email: targetUser.email || "",
+      phone: targetUser.phone || "",
+      role: normalizedRole,
+      password: "", // Leave blank if keeping existing password
+    });
+    setIsModalOpen(true);
+  };
+
+  // Form submit for Add or Edit User
+  const handleSubmitForm = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      toast.warn("Please enter user name");
+      return;
+    }
+    if (!formData.email.trim()) {
+      toast.warn("Please enter email address");
+      return;
+    }
+    if (modalMode === "add" && !formData.password.trim()) {
+      toast.warn("Please enter a password for the new user");
       return;
     }
 
     setIsSubmitting(true);
+    try {
+      if (modalMode === "add") {
+        const res = await userAPI.createUser(formData);
+        toast.success(res.message || "User created successfully!");
+      } else {
+        const res = await userAPI.updateUser(selectedUserId, formData);
+        toast.success(res.message || "User updated successfully!");
+      }
 
+      setIsModalOpen(false);
+      loadUsers();
+    } catch (err) {
+      console.error("User save error:", err);
+      toast.error(err.message || "Operation failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (userId, userEmail) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete user "${userEmail || userId}"? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const response = await userAPI.deleteUser(userId);
-
-      if (response.success) {
-        toast.success(response.message || "User deleted successfully!");
-        // Remove user from local state
-        setUsers((prev) => prev.filter((u) => u.id !== userId));
-      }
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error(error.message || "Error deleting user");
+      toast.success(response.message || "User deleted successfully!");
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      toast.error(err.message || "Failed to delete user");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Update user role function
+  // Update user role from dropdown
   const handleUpdateUserRole = async (userId, newRole) => {
     setIsSubmitting(true);
-
     try {
       const response = await userAPI.updateUserRole(userId, { role: newRole });
-
-      if (response.success) {
-        toast.success(response.message || "User role updated successfully!");
-        // Update user in local state
-        setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
-        );
-      }
-    } catch (error) {
-      console.error("Error updating user role:", error);
-      toast.error(error.message || "Error updating user role");
+      toast.success(response.message || `Role updated to ${newRole}`);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                role:
+                  newRole.charAt(0).toUpperCase() +
+                  newRole.slice(1).toLowerCase(),
+              }
+            : u
+        )
+      );
+    } catch (err) {
+      console.error("Error updating user role:", err);
+      toast.error(err.message || "Error updating user role");
+      loadUsers();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Refresh function
-  const handleRefresh = () => {
-    if (isFromSidebar && user?.role === "Admin") {
-      loadUsers();
-    }
-  };
-
-  // If not accessed through sidebar, show access denied
-  if (!isFromSidebar) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          Access Denied. Please navigate through the sidebar.
-        </div>
-      </div>
-    );
-  }
-
   // Filter users based on search term
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Loading state pattern like TransporterDetails
-  if (loading) {
+  const filteredUsers = users.filter((u) => {
+    const q = searchTerm.toLowerCase();
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            User Management
-          </h1>
-          <p className="text-gray-600">View and manage all system users</p>
-        </div>
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <span className="ml-2">Loading users...</span>
-          </div>
-        </div>
-      </div>
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.phone && u.phone.toLowerCase().includes(q)) ||
+      (u.role && u.role.toLowerCase().includes(q))
     );
-  }
+  });
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          User Management
-        </h1>
-        <p className="text-gray-600">View and manage all system users</p>
-      </div>
-
-      {/* Search and Actions Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div className="relative w-full md:w-64">
-          <input
-            type="text"
-            placeholder="Search users..."
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-blue-500 focus:border-blue-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen max-w-7xl mx-auto space-y-6">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs uppercase tracking-wider">
+            <Shield className="w-4 h-4" /> System Administration
+          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mt-1">
+            User Management
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Add system users, assign role privileges (Admin, Customer, Driver), and manage credentials.
+          </p>
         </div>
 
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleRefresh}
+            onClick={loadUsers}
             disabled={loading || isSubmitting}
-            className={`flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 ${
-              loading || isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs"
           >
-            <RefreshCw
-              className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
-            />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
           <button
-            className="flex items-center px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700"
-            disabled={isSubmitting}
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition"
           >
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add User
+            <UserPlus className="w-4 h-4" /> Add User
           </button>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative w-full sm:w-96">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search by name, email, phone, or role..."
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="text-xs font-semibold text-gray-500 w-full sm:w-auto text-right">
+          Total Users: <strong className="text-gray-900">{users.length}</strong>
         </div>
       </div>
 
       {/* Error state */}
-      {error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
           {error}
         </div>
-      ) : null}
+      )}
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase">
                   Phone
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-gray-600 uppercase">
+                  Role Privilege
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3.5 text-right text-xs font-semibold text-gray-600 uppercase">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="h-5 w-5 text-blue-600" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.name}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.phone || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        className={`px-2 py-1 text-xs leading-5 font-semibold rounded-full border-0 ${
-                          user.role === "admin"
-                            ? "bg-purple-100 text-purple-800"
-                            : user.role === "driver"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                        value={user.role}
-                        onChange={(e) =>
-                          handleUpdateUserRole(user.id, e.target.value)
-                        }
-                        disabled={isSubmitting}
-                      >
-                        <option value="customer">Customer</option>
-                        <option value="driver">Driver</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                        disabled={isSubmitting}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900"
-                        onClick={() => handleDeleteUser(user.id)}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? "Deleting..." : "Delete"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
+            <tbody className="divide-y divide-gray-200">
+              {loading ? (
                 <tr>
-                  <td
-                    colSpan="5"
-                    className="px-6 py-4 text-center text-gray-500"
-                  >
-                    No users found
+                  <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
+                    <div className="flex justify-center items-center gap-2">
+                      <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
+                      <span>Loading users...</span>
+                    </div>
                   </td>
                 </tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-10 text-center text-gray-400">
+                    No users found matching your search.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => {
+                  const roleStr = (u.role || "Customer").toLowerCase();
+                  return (
+                    <tr key={u.id} className="hover:bg-gray-50/70 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                            {(u.name || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-gray-900">{u.name}</div>
+                            <div className="text-[11px] text-gray-400">ID #{u.id}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-700 font-mono text-xs">
+                        {u.email}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-600 text-xs">
+                        {u.phone || "N/A"}
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <select
+                          className={`px-3 py-1 text-xs font-bold rounded-lg border cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 transition ${
+                            roleStr === "admin"
+                              ? "bg-purple-100 text-purple-900 border-purple-300"
+                              : roleStr === "driver"
+                              ? "bg-green-100 text-green-900 border-green-300"
+                              : "bg-blue-100 text-blue-900 border-blue-300"
+                          }`}
+                          value={roleStr}
+                          onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                          disabled={isSubmitting}
+                        >
+                          <option value="admin">Admin</option>
+                          <option value="customer">Customer</option>
+                          <option value="driver">Driver</option>
+                        </select>
+                      </td>
+
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium space-x-3">
+                        <button
+                          onClick={() => handleOpenEditModal(u)}
+                          className="text-blue-600 hover:text-blue-800 font-semibold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          className="text-red-600 hover:text-red-800 font-semibold"
+                          disabled={isSubmitting}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Add / Edit User Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  {modalMode === "add" ? <UserPlus className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-900">
+                    {modalMode === "add" ? "Add New System User" : "Edit User Account"}
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    {modalMode === "add"
+                      ? "Create credentials and assign access permissions."
+                      : "Modify user profile, role, or update password."}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitForm} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Email Address / Login ID *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="e.g. user@transporter.com"
+                    className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="9999999999"
+                      className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                    Role Privilege *
+                  </label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                    className="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 font-semibold"
+                  >
+                    <option value="Customer">Customer</option>
+                    <option value="Admin">Admin</option>
+                    <option value="Driver">Driver</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Password {modalMode === "edit" ? "(Leave blank to keep unchanged)" : "*"}
+                </label>
+                <div className="relative">
+                  <Key className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="password"
+                    required={modalMode === "add"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={modalMode === "edit" ? "•••••••• (Unchanged)" : "Enter login password"}
+                    className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 shadow-sm"
+                >
+                  {isSubmitting
+                    ? "Saving..."
+                    : modalMode === "add"
+                    ? "Create User"
+                    : "Update User"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
